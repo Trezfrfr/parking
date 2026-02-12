@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Parking Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --text:#222;
+    --primary:#4CAF50;
+    --danger:#e74c3c;
+    --shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+
+body.dark{
+    --bg:#1e1e2f;
+    --card:#2c2c3c;
+    --text:#fff;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:Segoe UI, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    transition:.3s;
+}
+
+/* Header */
+header{
+    background:var(--primary);
+    color:white;
+    padding:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    position:sticky;
+    top:0;
+}
+
+/* Container */
+.container{
+    padding:15px;
+}
+
+/* Cards */
+.cards{
+    display:flex;
+    flex-direction:column;   /* Mobile first */
+    gap:15px;
+}
+
+.card{
+    background:var(--card);
+    padding:20px;
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    text-align:center;
+}
+
+/* Buttons */
+button{
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    margin:5px 0;
+    width:100%;
+    font-size:15px;
+}
+
+.enter{background:var(--primary);color:white;}
+.exit{background:var(--danger);color:white;}
+.searchBtn{background:#3498db;color:white;}
+.toggle{
+    background:#fff;
+    color:var(--primary);
+    width:auto;
+    padding:8px 12px;
+}
+
+/* Sections */
+.section{
+    margin-top:20px;
+    background:var(--card);
+    padding:15px;
+    border-radius:12px;
+    box-shadow:var(--shadow);
+}
+
+/* Tables */
+.table-container{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:300px;
+}
+
+th{
+    background:var(--primary);
+    color:white;
+    padding:8px;
+}
+
+td{
+    padding:8px;
+    border-bottom:1px solid #ccc;
+    text-align:center;
+}
+
+/* Input */
+input{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    width:100%;
+    margin-bottom:10px;
+}
+
+/* Tablet & Desktop */
+@media(min-width:768px){
+    .cards{
+        flex-direction:row;
+    }
+
+    button{
+        width:auto;
+    }
+
+    .enter, .exit{
+        width:auto;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h3>🚗 Parking</h3>
+    <button class="toggle" onclick="toggleTheme()">🌙</button>
+</header>
+<div class="section">
+    <h3>Scan to Open on Mobile 📱</h3>
+    <div id="qrcode"></div>
+</div>
+
+<div class="container">
+
+<div class="cards">
+    <div class="card">
+        <h4>Total Slots</h4>
+        <h2 id="totalSlots">5</h2>
+    </div>
+
+    <div class="card">
+        <h4>Available</h4>
+        <h2 id="availableSlots">5</h2>
+    </div>
+
+    <div class="card">
+        <h4>Occupied</h4>
+        <h2 id="occupiedSlots">0</h2>
+    </div>
+</div>
+
+<div class="section">
+    <h4>Manage Parking</h4>
+    <button class="enter" onclick="vehicleEnter()">Vehicle Enter</button>
+    <button class="exit" onclick="vehicleExit()">Vehicle Exit</button>
+</div>
+
+<div class="section">
+    <h4>Search Vehicle</h4>
+    <input type="text" id="searchInput" placeholder="Enter Vehicle Number">
+    <button class="searchBtn" onclick="searchVehicle()">Search</button>
+    <p id="searchResult"></p>
+</div>
+
+<div class="section">
+    <h4>Parked Vehicles</h4>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Slot</th>
+                    <th>Vehicle</th>
+                </tr>
+            </thead>
+            <tbody id="parkingTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section">
+    <h4>History</h4>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Vehicle</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="historyTable"></tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+
+<script>
+let totalSlots = 5;
+let slots = JSON.parse(localStorage.getItem("slots")) || Array(totalSlots).fill(null);
+let history = JSON.parse(localStorage.getItem("history")) || [];
+
+updateUI();
+
+function vehicleEnter(){
+    let vehicleNo = prompt("Enter Vehicle Number:");
+    if(!vehicleNo) return;
+
+    let slotIndex = slots.indexOf(null);
+    if(slotIndex === -1){
+        alert("Parking Full!");
+        return;
+    }
+
+    slots[slotIndex] = vehicleNo;
+    history.push({vehicle:vehicleNo,status:"Entered"});
+    saveData();
+    updateUI();
+}
+
+function vehicleExit(){
+    let vehicleNo = prompt("Enter Vehicle Number:");
+    let slotIndex = slots.indexOf(vehicleNo);
+
+    if(slotIndex === -1){
+        alert("Vehicle Not Found!");
+        return;
+    }
+
+    slots[slotIndex] = null;
+    history.push({vehicle:vehicleNo,status:"Exited"});
+    saveData();
+    updateUI();
+}
+
+function searchVehicle(){
+    let vehicleNo = document.getElementById("searchInput").value;
+    let slotIndex = slots.indexOf(vehicleNo);
+    let result = document.getElementById("searchResult");
+
+    if(slotIndex === -1){
+        result.innerHTML = "Vehicle Not Parked";
+    } else {
+        result.innerHTML = "Vehicle in Slot " + (slotIndex+1);
+    }
+}
+
+function updateUI(){
+    document.getElementById("availableSlots").innerText = slots.filter(s=>s===null).length;
+    document.getElementById("occupiedSlots").innerText = slots.filter(s=>s!==null).length;
+
+    let table="";
+    slots.forEach((vehicle,i)=>{
+        if(vehicle){
+            table+=`<tr><td>${i+1}</td><td>${vehicle}</td></tr>`;
+        }
+    });
+    document.getElementById("parkingTable").innerHTML=table;
+
+    let historyHTML="";
+    history.forEach(h=>{
+        historyHTML+=`<tr><td>${h.vehicle}</td><td>${h.status}</td></tr>`;
+    });
+    document.getElementById("historyTable").innerHTML=historyHTML;
+}
+
+function saveData(){
+    localStorage.setItem("slots",JSON.stringify(slots));
+    localStorage.setItem("history",JSON.stringify(history));
+}
+
+function toggleTheme(){
+    document.body.classList.toggle("dark");
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    const websiteURL = "http://10.37.137.244:5500/workshop.html";
+
+    new QRCode(document.getElementById("qrcode"), {
+        text: websiteURL,
+        width: 200,
+        height: 200
+    });
+</script>
+
+</body>
+</html>
